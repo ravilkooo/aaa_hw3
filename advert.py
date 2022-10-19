@@ -9,27 +9,34 @@ class JSONConveter:
         return python_dict
 
 
-class Location:
+class Attributable:
     # Класс, который позволяет хранить данные о местоположени,
     # которые будут являтся аттрибутами экземпляров этого класса
     def __init__(self, attr_dict):
         for key, value in attr_dict.items():
-            self.__dict__[key] = value
+            if type(value) is dict:
+                self.__dict__[key] = Attributable(value)
+            else:
+                self.__dict__[key] = value
+
+    def __repr__(self):
+        return str(self.__dict__)
 
 
 class ColorizeMixin:
     def __init__(self):
         self.repr_color_code = 33
 
-    def __repr__(self):
-        return f'\033[{self.repr_color_code}m{self.title}' \
-               f' | {self.price} ₽\033[0m'
+    def __str__(self):
+        # return f'\033[{self.repr_color_code}m{self.title} | {self.price} ₽\033[0m'
+        return f'\033[{self.repr_color_code}m{self.__repr__()}\033[0m'
 
 
 class Advert(ColorizeMixin):
     def __init__(self, attr_dict):
         # Проверяем наличие обязательного аттрибута title
         if 'title' not in attr_dict:
+            print('Advert object must have "title" attribute.')
             raise AttributeError('Advert object must have "title" attribute.')
 
         # Проверяем наличие аттрибута price и его корректность при наличии
@@ -43,19 +50,25 @@ class Advert(ColorizeMixin):
 
         # Динамически создаём аттрибуты и присваиваем значения
         for key, value in attr_dict.items():
-            self.__dict__[key] = value
-
-        # При наличии поля location создаём объект, к аттрибутам которого
-        # можно будет обращаться через точку (например loaction.address)
-        if 'location' in attr_dict:
-            self.location = Location(self.location)
+            if type(value) is dict:
+                self.__dict__[key] = Attributable(value)
+            else:
+                self.__dict__[key] = value
 
         # Вызываем конструктор миксина
         super().__init__()
 
+    def __repr__(self):
+        return f'{self.title} | {self.price} ₽'
+
     @property
     def price(self):
         return self._price
+
+    @price.setter
+    def price(self, new_price):
+        assert new_price > 0, 'price must be >= 0 '
+        self._price = new_price
 
 
 def test1():
@@ -78,14 +91,20 @@ def test1():
         "price": 1000,
         "class": "dogs",
         "location": {
-        "address": "сельское поселение Ельдигинское, поселок санатория Тишково, 25"
+        "address": "сельское поселение Ельдигинское, поселок санатория Тишково, 25",
+        "index" : 253120
         }
         }"""
     corgi_data = conv.convert_to_dict(corgi_str)
     corgi_adv = Advert(corgi_data)
-    print(corgi_adv)
+    print(corgi_adv.location)
     print(f'Адрес {corgi_adv.title} : {corgi_adv.location.address}')
     print(f'Стоимоcть {corgi_adv.title} : {corgi_adv.price}')
+
+    try:
+        Advert({"class": "value"})
+    except AttributeError as e:
+        print(f'Got an AttributeError: {e}')
 
 
 if __name__ == '__main__':
